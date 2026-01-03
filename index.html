@@ -4,8 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tablolar</title>
+
   <link rel="icon" href="./assets/logo-120.png" type="image/png">
-<link rel="apple-touch-icon" href="./assets/logo-120.png">
+  <link rel="apple-touch-icon" href="./assets/logo-120.png">
 
   <style>
     :root{
@@ -13,7 +14,6 @@
       --text:#0f172a;
       --muted:#475569;
       --primary:#00b0e8;
-      --primary2:#4fd1ff;
       --shadow: 0 10px 24px rgba(15, 23, 42, .06);
     }
 
@@ -40,7 +40,6 @@
       background: #fafafa;
     }
 
-    /* ✅ Modern Search */
     .searchrow{
       display:flex;
       align-items:center;
@@ -84,7 +83,6 @@
       margin:0 !important;
       color: var(--text);
     }
-
     .search::placeholder{ color:#94a3b8; }
 
     .clear{
@@ -196,10 +194,128 @@
       .sidebar{ border-right:none; border-bottom:1px solid var(--border); }
       iframe{ height: 70vh; }
     }
+
+    /* ✅ Full-screen loader + progress */
+    .loader{
+      position: fixed;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,.72);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity .25s ease;
+    }
+    .loader.hide{
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loader-card{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      width: min(400px, calc(100vw - 32px));
+      box-shadow: 0 18px 50px rgba(0,0,0,.12);
+      text-align:center;
+    }
+    .loader-logo{
+      width:54px;
+      height:54px;
+      border-radius:14px;
+      display:block;
+      margin: 2px auto 10px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.10);
+    }
+    .spinner{
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 4px solid rgba(0,176,232,.20);
+      border-top-color: rgba(0,176,232,.95);
+      margin: 8px auto 12px;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    .loader-title{
+      font-weight: 900;
+      letter-spacing: .2px;
+      color: var(--text);
+    }
+    .loader-sub{
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .progress{
+      margin-top: 12px;
+      text-align:left;
+    }
+    .progress-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+      color: var(--muted);
+      font-size:12px;
+      font-weight:800;
+    }
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(148,163,184,.30);
+      overflow:hidden;
+      border:1px solid rgba(229,231,235,.8);
+    }
+    .fill{
+      height:100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--primary2));
+      transition: width .18s ease;
+      position:relative;
+    }
+    .fill::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.35), rgba(255,255,255,.0));
+      transform: translateX(-60%);
+      animation: shine 1.1s ease-in-out infinite;
+      opacity:.9;
+    }
+    @keyframes shine{
+      to{ transform: translateX(60%); }
+    }
   </style>
 </head>
 
 <body>
+  <!-- ✅ Loader Overlay -->
+  <div id="loader" class="loader">
+    <div class="loader-card">
+      <img class="loader-logo" src="./assets/logo-120.png" alt="Logo">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="loader-title">Tablolar Yükleniyor…</div>
+      <div class="loader-sub" id="loaderSub">Liste hazırlanıyor</div>
+
+      <div class="progress" aria-label="Yükleme ilerlemesi">
+        <div class="progress-top">
+          <span id="progressLabel">Başlatılıyor</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="bar">
+          <div id="progressFill" class="fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <header>
     <div class="title">Tablolar</div>
     <div class="hint">Soldan seçim yap — tablolar canlı güncellenir. (<b>/</b> ile ara)</div>
@@ -207,8 +323,6 @@
 
   <div class="layout">
     <aside class="sidebar">
-
-      <!-- ✅ Modern Search Row -->
       <div class="searchrow">
         <div class="searchbox">
           <span class="search-ico" aria-hidden="true">🔎</span>
@@ -238,8 +352,9 @@
     const WEBAPP = "https://script.google.com/macros/s/AKfycbyA8NpgRWFjlZV47sEu7KGvL_zOVpeJpk8UaH6K5ZFkbvTwPaS76Tj1vtOhuK9LnFMQHg/exec";
     const SSID   = "15NX2Fxi9ifIBbjtToNtFvrYksLRTF7G3qdJw1AJMk0I";
 
-    let TABLES = []; // otomatik gelecek
-    let lastRenderedCount = 0;
+    let TABLES = [];
+    let progTimer = null;
+    let prog = 0;
 
     function buildUrl(t){
       const params = new URLSearchParams({
@@ -267,13 +382,65 @@
     const countBadge = document.getElementById("countBadge");
     const statusEl = document.getElementById("status");
 
+    // loader elements
+    const loaderEl = document.getElementById("loader");
+    const loaderSubEl = document.getElementById("loaderSub");
+    const progressFillEl = document.getElementById("progressFill");
+    const progressPctEl = document.getElementById("progressPct");
+    const progressLabelEl = document.getElementById("progressLabel");
+
+    function showLoader(){
+      loaderEl && loaderEl.classList.remove("hide");
+      startFakeProgress();
+    }
+
+    function hideLoader(){
+      stopFakeProgress();
+      // %100'e getirip kısa bekle, sonra kapat
+      setProgress(100, "Hazır", "Tamamlandı");
+      setTimeout(() => {
+        if (!loaderEl) return;
+        loaderEl.classList.add("hide");
+        setTimeout(() => loaderEl.remove(), 320);
+      }, 250);
+    }
+
+    function setProgress(pct, label, sub){
+      prog = Math.max(0, Math.min(100, pct));
+      if (progressFillEl) progressFillEl.style.width = prog + "%";
+      if (progressPctEl) progressPctEl.textContent = Math.round(prog) + "%";
+      if (progressLabelEl && label) progressLabelEl.textContent = label;
+      if (loaderSubEl && sub) loaderSubEl.textContent = sub;
+    }
+
+    // “gerçek” değil, UX için hoş bir animasyon
+    function startFakeProgress(){
+      stopFakeProgress();
+      prog = 0;
+      setProgress(5, "Başlatılıyor", "Bağlantı kuruluyor");
+
+      progTimer = setInterval(() => {
+        // 90'a kadar yavaşça yaklaşsın
+        if (prog < 70) prog += 6;
+        else if (prog < 85) prog += 2.5;
+        else if (prog < 92) prog += 1;
+
+        setProgress(prog, "Tablolar alınıyor", "Liste hazırlanıyor");
+        if (prog >= 92) stopFakeProgress();
+      }, 220);
+    }
+
+    function stopFakeProgress(){
+      if (progTimer) clearInterval(progTimer);
+      progTimer = null;
+    }
+
     function syncClear(){
       const has = qEl.value.trim().length > 0;
       clearBtn.style.display = has ? "inline-flex" : "none";
     }
 
     function setCount(n){
-      lastRenderedCount = n;
       countBadge.textContent = String(n);
     }
 
@@ -306,7 +473,6 @@
         btn.onclick = () => select(t.key);
         listEl.appendChild(btn);
 
-        // ilkini default seç
         if (idx === 0 && !frameEl.src) select(t.key);
       });
     }
@@ -320,8 +486,11 @@
       location.hash = key;
     }
 
-    // ✅ input events
+    // input events (✅ /hatay yazılırsa baştaki / silinir)
     qEl.addEventListener("input", () => {
+      const cleaned = qEl.value.replace(/^\s*\/+/, "");
+      if (cleaned !== qEl.value) qEl.value = cleaned;
+
       render(qEl.value);
       syncClear();
     });
@@ -333,13 +502,11 @@
       syncClear();
     });
 
-    // ✅ "/" ile aramaya odaklan
     document.addEventListener("keydown", (e) => {
       if (e.key === "/" && document.activeElement !== qEl) {
         e.preventDefault();
         qEl.focus();
       }
-      // ESC ile temizle
       if (e.key === "Escape" && document.activeElement === qEl) {
         qEl.value = "";
         render("");
@@ -349,17 +516,29 @@
 
     window.addEventListener("load", async () => {
       try{
-        statusEl.textContent = "Yükleniyor…";
-        await loadTables();
-        statusEl.textContent = "";
+        showLoader();
+        statusEl.textContent = ""; // input yanında mesaj yok
 
+        setProgress(18, "Bağlanılıyor", "Google Sheets listesi isteniyor…");
+        await loadTables();
+
+        setProgress(75, "Hazırlanıyor", "Arayüz hazırlanıyor…");
         render("");
         syncClear();
 
         const hash = (location.hash || "").replace("#","");
         if (hash) select(hash);
 
+        hideLoader();
       }catch(err){
+        stopFakeProgress();
+        setProgress(100, "Hata", "Liste yüklenemedi");
+        // loader'ı kısa tutup kaldır
+        setTimeout(() => {
+          if (loaderEl) loaderEl.classList.add("hide");
+          setTimeout(() => loaderEl && loaderEl.remove(), 320);
+        }, 450);
+
         statusEl.textContent = "";
         listEl.innerHTML = `<div style="color:#b91c1c; padding:10px; font-weight:800;">
           Liste yüklenemedi: ${String(err)}
