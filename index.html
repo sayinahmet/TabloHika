@@ -249,6 +249,50 @@
       body.drawer-open .sidebar{ transform: translateX(0); }
       body.drawer-open .overlay{ display:block; }
     }
+    /* Drawer header */
+.drawer-head{
+  display:none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: min(92vw, 360px);
+  height: 64px;
+  padding: 10px 14px;
+  border-bottom:1px solid var(--border);
+  background:#fafafa;
+  z-index: 71;
+  align-items:center;
+  justify-content:space-between;
+}
+.drawer-title{ font-weight:900; color:var(--text); }
+
+.drawer-close{
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:12px;
+  width:44px;
+  height:44px;
+  cursor:pointer;
+  box-shadow: var(--shadow);
+  font-size:18px;
+}
+
+/* Kenardan swipe için görünmez alan */
+.edge-swipe{
+  display:none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 100vh;
+  z-index: 65;
+}
+
+@media (max-width: 980px){
+  .drawer-head{ display:flex; }
+  .edge-swipe{ display:block; }
+}
+
 
     /* ✅ Full-screen loader + progress (seninki aynen) */
     .loader{
@@ -339,6 +383,7 @@
 
   <!-- ✅ Drawer overlay -->
   <div id="overlay" class="overlay"></div>
+  <div id="edgeSwipe" class="edge-swipe"></div>
 
   <header>
     <button id="menuBtn" class="menu-btn" type="button" aria-label="Menü">☰</button>
@@ -351,6 +396,10 @@
 
   <div class="layout">
     <aside class="sidebar">
+      <div class="drawer-head">
+  <div class="drawer-title">Raporlar</div>
+  <button id="closeDrawerBtn" class="drawer-close" type="button" aria-label="Kapat">✕</button>
+</div>
       <div class="searchrow">
         <div class="searchbox">
           <span class="search-ico" aria-hidden="true">🔎</span>
@@ -619,6 +668,90 @@
         setCount(0);
       }
     });
+    const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+closeDrawerBtn?.addEventListener("click", closeDrawer);
+
+// Swipe logic
+const sidebarEl = document.querySelector(".sidebar");
+const edgeSwipeEl = document.getElementById("edgeSwipe");
+
+let swiping = false;
+let startX = 0;
+let currentX = 0;
+let drawerW = 0;
+
+function setDrawerTranslate(px){
+  // px: negatif => kapalıya doğru, 0 => açık
+  sidebarEl.style.transition = "none";
+  sidebarEl.style.transform = `translateX(${px}px)`;
+}
+
+function settleDrawer(open){
+  sidebarEl.style.transition = "";
+  if(open) openDrawer();
+  else closeDrawer();
+  // transition normale dönsün
+  setTimeout(() => { sidebarEl.style.transition = ""; }, 250);
+}
+
+function onStart(x){
+  if(!window.matchMedia("(max-width: 980px)").matches) return;
+  drawerW = sidebarEl.getBoundingClientRect().width;
+  swiping = true;
+  startX = x;
+  currentX = x;
+}
+
+function onMove(x){
+  if(!swiping) return;
+  currentX = x;
+
+  const isOpen = document.body.classList.contains("drawer-open");
+
+  // Açıkken: 0..-drawerW arası sürükle
+  // Kapalıyken: -drawerW..0 arası sürükle (kenardan başlatıyoruz)
+  let delta = currentX - startX;
+
+  let tx;
+  if(isOpen){
+    tx = Math.min(0, Math.max(-drawerW, delta)); // sola çekince negatif
+  } else {
+    // kapalıyken delta pozitif olmalı (sağa)
+    tx = Math.min(0, Math.max(-drawerW, -drawerW + delta));
+  }
+
+  // overlay görünürlüğü
+  document.body.classList.add("drawer-open");
+  setDrawerTranslate(tx);
+}
+
+function onEnd(){
+  if(!swiping) return;
+  swiping = false;
+
+  const isOpen = document.body.classList.contains("drawer-open");
+  const tx = parseFloat((sidebarEl.style.transform.match(/-?\d+(\.\d+)?/)||["0"])[0]);
+
+  // tx 0’a yakınsa açık, -drawerW’a yakınsa kapalı
+  const openedRatio = 1 - (Math.abs(tx) / drawerW); // 0..1
+  settleDrawer(openedRatio > 0.45);
+
+  // transform reset (class yönetiyor)
+  sidebarEl.style.transform = "";
+}
+
+// Dokunma eventleri
+function bindSwipe(el){
+  el.addEventListener("touchstart", (e) => onStart(e.touches[0].clientX), {passive:true});
+  el.addEventListener("touchmove",  (e) => { onMove(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
+  el.addEventListener("touchend",   onEnd, {passive:true});
+}
+
+// 1) Kenardan çekerek aç
+bindSwipe(edgeSwipeEl);
+
+// 2) Menünün üstünden/menünün kendisinden çekerek kapat/açıkken sürükle
+bindSwipe(sidebarEl);
   </script>
 </body>
 </html>
