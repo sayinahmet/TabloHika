@@ -40,15 +40,15 @@
     }
 
     .sidebar{
-  border-right:1px solid var(--border);
-  padding: 14px;
-  background: #fafafa;
+      border-right:1px solid var(--border);
+      padding: 14px;
+      background: #fafafa;
 
-  /* Scroll fix */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
+      /* Scroll fix */
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
 
     .searchrow{
       display:flex;
@@ -181,7 +181,7 @@
       background:#fff;
     }
 
-    /* ✅ iframe wrapper: mobilde scale uygulayacağız */
+    /* ✅ iframe wrapper */
     .frame-scale{
       width:100%;
       height: calc(100vh - 115px);
@@ -196,6 +196,9 @@
       border:0;
       display:block;
       background:#fff;
+
+      /* ✅ önemli: iframe’a transform uygulamayacağız (mobil sağ boşluğu yapan şey buydu) */
+      transform: none !important;
       transform-origin: top left;
     }
 
@@ -228,15 +231,15 @@
       z-index: 60;
       touch-action: none;
     }
+
     body.drawer-dragging .sidebar{
-  transition: none !important;
-}
+      transition: none !important;
+    }
 
     @media (max-width: 980px){
-      /* layout artık tek kolon, ama sidebar drawer olacak */
       .layout{ grid-template-columns: 1fr; }
       .main{ padding: 10px; }
-      .frame-scale{ height: calc(100vh - 86px); } /* header payı */
+      .frame-scale{ height: calc(100vh - 86px); }
 
       .menu-btn{ display:inline-flex; align-items:center; justify-content:center; }
 
@@ -251,24 +254,22 @@
         z-index: 70;
         border-right:1px solid var(--border);
         border-bottom:none;
-        padding-top: 72px; /* header yüksekliği */
-        padding-bottom: 22px; /* ✅ en alttaki elemanlar rahat görünsün */
+        padding-top: 72px;
+        padding-bottom: 22px;
         background:#fafafa;
         touch-action: pan-y;
-        
+
         overflow-y: auto;
-      -webkit-overflow-scrolling: touch; /* iOS için akıcı scroll */
-      overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
       }
 
       body.drawer-open .sidebar{ transform: translateX(0); }
       body.drawer-open .overlay{ display:block; }
 
-      /* ✅ sürüklerken transition kapansın */
       body.drawer-dragging .sidebar{ transition: none !important; }
     }
 
-    /* Drawer header */
     .drawer-head{
       display:none;
       position: fixed;
@@ -296,7 +297,6 @@
       font-size:18px;
     }
 
-    /* Kenardan swipe için görünmez alan */
     .edge-swipe{
       display:none;
       position: fixed;
@@ -313,7 +313,7 @@
       .edge-swipe{ display:block; }
     }
 
-    /* ✅ Full-screen loader + progress (seninki aynen) */
+    /* ✅ Full-screen loader + progress */
     .loader{
       position: fixed;
       inset: 0;
@@ -476,7 +476,6 @@
 
     const listEl = document.getElementById("list");
     const frameEl = document.getElementById("frame");
-    const frameScaleEl = document.getElementById("frameScale");
     const qEl = document.getElementById("q");
     const clearBtn = document.getElementById("clearBtn");
     const countBadge = document.getElementById("countBadge");
@@ -589,27 +588,15 @@
       });
     }
 
-    /* ✅ Mobilde tabloyu tek seferde ekrana sığdır (iframe'ı zoom-out)
-       Not: iframe içini ölçemiyoruz (cross-origin). Bu yüzden baseWidth'i daha geniş tutup
-       daha güvenli şekilde zoom-out yapıyoruz ki sağdaki kolonlar kırpılmasın.
+    /* ✅ Mobilde iframe'a scale UYGULAMA:
+       Artık tabloyu tek seferde sığdırma işi Index.html içinde çözüldü.
+       Bu sayede mobilde sağ boşluk oluşmaz.
     */
     function fitMobile(){
-      if (!window.matchMedia("(max-width: 980px)").matches) {
-        frameEl.style.transform = "";
-        frameEl.style.width = "100%";
-        frameEl.style.height = "100%";
-        return;
-      }
-
-      // Daha “güvenli” baz genişlik: tabloların çoğunda sağ taraf kırpılmasın diye
-      const baseWidth = 1200; // 720 yerine daha geniş -> daha çok zoom-out
-      const w = frameScaleEl ? frameScaleEl.clientWidth : window.innerWidth;
-
-      const scale = Math.max(0.40, Math.min(1, w / baseWidth));
-
-      frameEl.style.transform = `scale(${scale})`;
-      frameEl.style.width = `${100/scale}%`;
-      frameEl.style.height = `${100/scale}%`;
+      // her durumda iframe reset
+      frameEl.style.transform = "";
+      frameEl.style.width = "100%";
+      frameEl.style.height = "100%";
     }
 
     function select(key){
@@ -625,11 +612,8 @@
         closeDrawer();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-
-      setTimeout(fitMobile, 260);
     }
 
-    // input events (✅ /hatay yazılırsa baştaki / silinir)
     qEl.addEventListener("input", () => {
       const cleaned = qEl.value.replace(/^\s*\/+/, "");
       if (cleaned !== qEl.value) qEl.value = cleaned;
@@ -662,9 +646,8 @@
       fitMobile();
     });
 
-    // ✅ iframe her yüklendiğinde tekrar fit (tablo değişince önemli)
     frameEl.addEventListener("load", () => {
-      setTimeout(fitMobile, 80);
+      setTimeout(fitMobile, 40);
     });
 
     window.addEventListener("load", async () => {
@@ -683,7 +666,7 @@
         if (hash) select(hash);
 
         hideLoader();
-        setTimeout(fitMobile, 320);
+        setTimeout(fitMobile, 80);
         closeDrawer();
       }catch(err){
         stopFakeProgress();
@@ -703,10 +686,6 @@
 
     /* =========================
        ✅ AKICI SWIPE DRAWER
-       - Edge’den sağa çek: aç
-       - Drawer açıkken sola çek: kapat
-       - Velocity + threshold
-       - requestAnimationFrame ile smooth
     ========================== */
 
     const sidebarEl = document.querySelector(".sidebar");
@@ -739,7 +718,6 @@
     }
 
     function applyTx(tx){
-      // drawer açık classını drag sırasında da tutuyoruz (overlay görünsün)
       document.body.classList.add("drawer-open");
       document.body.classList.add("drawer-dragging");
       sidebarEl.style.transform = `translateX(${tx}px)`;
@@ -764,7 +742,6 @@
       const closedTx = -drawerW;
       const opened = document.body.classList.contains("drawer-open");
 
-      // kapalıyken sadece edge’den başlat
       if (!opened && !fromEdge) return;
 
       dragActive = true;
@@ -775,10 +752,7 @@
       lastT = performance.now();
       vx = 0;
 
-      // transition kapat
       document.body.classList.add("drawer-dragging");
-
-      // başlangıç konumunu setle
       scheduleTx(dragStartTx);
     }
 
@@ -788,15 +762,12 @@
       const now = performance.now();
       const dx = clientX - dragStartX;
 
-      // hız (px/ms)
       const dt = Math.max(1, now - lastT);
       vx = (clientX - lastX) / dt;
       lastX = clientX;
       lastT = now;
 
       const closedTx = -drawerW;
-
-      // tx: [-drawerW .. 0]
       const tx = clamp(dragStartTx + dx, closedTx, 0);
       scheduleTx(tx);
     }
@@ -808,15 +779,11 @@
       cancelAnimationFrame(rafId);
       rafId = 0;
 
-      const closedTx = -drawerW;
       const m = sidebarEl.style.transform.match(/-?\d+(\.\d+)?/);
       const tx = m ? parseFloat(m[0]) : currentStateTx();
 
-      // Açıklık oranı
-      const openRatio = 1 - (Math.abs(tx) / drawerW); // 0..1
-
-      // velocity ile karar (hızlı sağa -> aç, hızlı sola -> kapa)
-      const fast = Math.abs(vx) > 0.6; // ~600px/sn
+      const openRatio = 1 - (Math.abs(tx) / drawerW);
+      const fast = Math.abs(vx) > 0.6;
       let shouldOpen;
       if (fast) shouldOpen = vx > 0;
       else shouldOpen = openRatio > 0.45;
@@ -828,12 +795,11 @@
     }
 
     function bindSwipe(el, fromEdge){
-      // Pointer varsa onu kullan (daha stabil)
       const hasPointer = "PointerEvent" in window;
 
       if (hasPointer){
         el.addEventListener("pointerdown", (e) => {
-          if (e.pointerType === "mouse") return; // mouse ile sürükleme istemiyorsan
+          if (e.pointerType === "mouse") return;
           dragStart(e.clientX, fromEdge);
           if (dragActive) el.setPointerCapture(e.pointerId);
         }, {passive:true});
@@ -853,9 +819,7 @@
           if (!dragActive) return;
           dragEnd();
         }, {passive:true});
-
       } else {
-        // Touch fallback
         el.addEventListener("touchstart", (e) => dragStart(e.touches[0].clientX, fromEdge), {passive:true});
         el.addEventListener("touchmove", (e) => { dragMove(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
         el.addEventListener("touchend", dragEnd, {passive:true});
@@ -863,11 +827,8 @@
       }
     }
 
-    // 1) Kenardan çekerek aç
     bindSwipe(edgeSwipeEl, true);
-    // 2) Açıkken üst başlıktan çekerek kapat / sürükle
-bindSwipe(drawerHeadEl, false);
-
+    bindSwipe(drawerHeadEl, false);
   </script>
 </body>
 </html>
