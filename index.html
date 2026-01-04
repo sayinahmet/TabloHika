@@ -44,13 +44,11 @@
       padding: 14px;
       background: #fafafa;
 
-      /* Scroll fix */
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
 
-      /* ✅ PC: sidebar kendi içinde scroll */
-  height: calc(100vh - 57px); /* header yüksekliği kadar düş */
+      height: calc(100vh - 57px);
     }
 
     .searchrow{
@@ -184,7 +182,6 @@
       background:#fff;
     }
 
-    /* ✅ iframe wrapper */
     .frame-scale{
       width:100%;
       height: calc(100vh - 115px);
@@ -199,13 +196,10 @@
       border:0;
       display:block;
       background:#fff;
-
-      /* ✅ önemli: iframe’a transform uygulamayacağız (mobil sağ boşluğu yapan şey buydu) */
       transform: none !important;
       transform-origin: top left;
     }
 
-    /* ✅ Mobile App-like Drawer */
     .menu-btn{
       display:none;
       border:1px solid var(--border);
@@ -316,7 +310,6 @@
       .edge-swipe{ display:block; }
     }
 
-    /* ✅ Full-screen loader + progress */
     .loader{
       position: fixed;
       inset: 0;
@@ -383,7 +376,6 @@
 </head>
 
 <body>
-  <!-- ✅ Loader Overlay -->
   <div id="loader" class="loader">
     <div class="loader-card">
       <img class="loader-logo" src="./assets/logo-120.png" alt="Logo">
@@ -403,7 +395,6 @@
     </div>
   </div>
 
-  <!-- ✅ Drawer overlay -->
   <div id="overlay" class="overlay"></div>
   <div id="edgeSwipe" class="edge-swipe"></div>
 
@@ -444,7 +435,7 @@
     <main class="main">
       <div class="frame-wrap">
         <div id="frameScale" class="frame-scale">
-          <iframe id="frame" loading="lazy"></iframe>
+          <iframe id="frame" loading="eager"></iframe>
         </div>
       </div>
     </main>
@@ -454,29 +445,63 @@
     const WEBAPP = "https://script.google.com/macros/s/AKfycbyA8NpgRWFjlZV47sEu7KGvL_zOVpeJpk8UaH6K5ZFkbvTwPaS76Tj1vtOhuK9LnFMQHg/exec";
     const SSID   = "15NX2Fxi9ifIBbjtToNtFvrYksLRTF7G3qdJw1AJMk0I";
 
+    // ✅ Client cache keys
+    const LS_LIST_KEY = "tables_cache_v1_" + SSID;
+    const LS_LAST_KEY = "tables_last_selected_v1_" + SSID;
+
     let TABLES = [];
     let progTimer = null;
     let prog = 0;
 
     function buildUrl(t){
+      // ✅ v paramını kaldırdık: server tarafı lastUpdated ile güncellik garantili
       const params = new URLSearchParams({
         ss: SSID,
         sheet: t.sheet,
         range: t.range,
-        skip: String(t.skip ?? 1),
-        v: String(Date.now())
+        skip: String(t.skip ?? 1)
       });
       return `${WEBAPP}?${params.toString()}`;
     }
 
-    async function loadTables(){
-      const url = `${WEBAPP}?mode=list&ss=${encodeURIComponent(SSID)}&v=${Date.now()}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data || !data.ok) throw new Error(data?.error || "List fetch failed");
-      TABLES = data.tables || [];
+    function safeParse(json){
+      try { return JSON.parse(json); } catch { return null; }
     }
 
+    function loadListFromLocal(){
+      const raw = localStorage.getItem(LS_LIST_KEY);
+      const obj = raw ? safeParse(raw) : null;
+      if (!obj || !Array.isArray(obj.tables)) return null;
+      return obj.tables;
+    }
+
+    function saveListToLocal(tables){
+      try {
+        localStorage.setItem(LS_LIST_KEY, JSON.stringify({
+          savedAt: Date.now(),
+          tables
+        }));
+      } catch {}
+    }
+
+    function getLastSelected(){
+      try { return localStorage.getItem(LS_LAST_KEY) || ""; } catch { return ""; }
+    }
+
+    function setLastSelected(key){
+      try { localStorage.setItem(LS_LAST_KEY, key); } catch {}
+    }
+
+    async function loadTablesFresh(){
+      // ✅ server list cache var ama yine de tazeyi çekiyoruz (değiştiyse güncellensin)
+      const url = `${WEBAPP}?mode=list&ss=${encodeURIComponent(SSID)}`;
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+      if (!data || !data.ok) throw new Error(data?.error || "List fetch failed");
+      return data.tables || [];
+    }
+
+    // UI els
     const listEl = document.getElementById("list");
     const frameEl = document.getElementById("frame");
     const qEl = document.getElementById("q");
@@ -584,32 +609,39 @@
           </div>
           <div style="color:var(--primary); font-weight:900;">›</div>
         `;
-        btn.onclick = () => select(t.key);
+        btn.onclick = () => select(t.key, { user:true });
         listEl.appendChild(btn);
 
-        if (idx === 0 && !frameEl.src) select(t.key);
+        // eğer iframe boşsa, ilkini seç
+        if (idx === 0 && !frameEl.src) select(t.key, { user:false });
       });
     }
 
-    /* ✅ Mobilde iframe'a scale UYGULAMA:
-       Artık tabloyu tek seferde sığdırma işi Index.html içinde çözüldü.
-       Bu sayede mobilde sağ boşluk oluşmaz.
-    */
     function fitMobile(){
-      // her durumda iframe reset
       frameEl.style.transform = "";
       frameEl.style.width = "100%";
       frameEl.style.height = "100%";
     }
 
-    function select(key){
+    // ✅ iframe’i gerçekten hızlandıran: src’yi mümkün olan en erken anda set etmek
+    function select(key, opts={user:false}){
       const t = TABLES.find(x => x.key === key);
       if (!t) return;
 
       document.querySelectorAll(".btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
-      frameEl.src = buildUrl(t);
+
+      const url = buildUrl(t);
+      if (frameEl.src !== url) frameEl.src = url;
+
       location.hash = key;
       setActiveTitle(t);
+      setLastSelected(key);
+
+      // ✅ Prefetch (cache’i ısıt): aynı URL’i arkaplanda çek
+      // İstersen kapatırız; gerçek hızda faydası var.
+      if (opts.user) {
+        try { fetch(url, { mode:"no-cors", cache:"no-store" }); } catch {}
+      }
 
       if (window.matchMedia("(max-width: 980px)").matches) {
         closeDrawer();
@@ -645,30 +677,59 @@
       }
     });
 
-    window.addEventListener("resize", () => {
-      fitMobile();
-    });
+    window.addEventListener("resize", () => { fitMobile(); });
+    frameEl.addEventListener("load", () => { setTimeout(fitMobile, 40); });
 
-    frameEl.addEventListener("load", () => {
-      setTimeout(fitMobile, 40);
-    });
-
+    // ✅ Başlangıç akışı:
+    // 1) localStorage varsa hemen listeyi bas + last selected varsa iframe’i hemen başlat
+    // 2) sonra taze liste çek, fark varsa güncelle
     window.addEventListener("load", async () => {
       try{
         showLoader();
         statusEl.textContent = "";
 
-        setProgress(18, "Bağlanılıyor", "Google Sheets listesi isteniyor…");
-        await loadTables();
+        // 1) Local list -> anında render
+        const localTables = loadListFromLocal();
+        if (localTables && localTables.length){
+          TABLES = localTables;
+          render("");
+          syncClear();
 
-        setProgress(75, "Hazırlanıyor", "Arayüz hazırlanıyor…");
-        render("");
-        syncClear();
+          // last selected veya hash
+          const hash = (location.hash || "").replace("#","");
+          const last = getLastSelected();
+          const key = hash || last;
+          if (key) select(key, { user:false });
 
-        const hash = (location.hash || "").replace("#","");
-        if (hash) select(hash);
+          setProgress(35, "Hızlı açılış", "Önbellekten liste yüklendi");
+        } else {
+          setProgress(18, "Bağlanılıyor", "Google Sheets listesi isteniyor…");
+        }
 
+        // 2) Fresh list
+        const fresh = await loadTablesFresh();
+        const freshStr = JSON.stringify(fresh);
+        const curStr = JSON.stringify(TABLES || []);
+        const changed = freshStr !== curStr;
+
+        TABLES = fresh;
+        saveListToLocal(fresh);
+
+        if (changed){
+          render(qEl.value || "");
+          syncClear();
+
+          const hash = (location.hash || "").replace("#","");
+          const last = getLastSelected();
+          const key = hash || last;
+
+          // seçili key yoksa ilkini aç
+          if (key) select(key, { user:false });
+        }
+
+        setProgress(82, "Hazırlanıyor", "Arayüz hazırlanıyor…");
         hideLoader();
+
         setTimeout(fitMobile, 80);
         closeDrawer();
       }catch(err){
@@ -690,7 +751,6 @@
     /* =========================
        ✅ AKICI SWIPE DRAWER
     ========================== */
-
     const sidebarEl = document.querySelector(".sidebar");
     const edgeSwipeEl = document.getElementById("edgeSwipe");
     const drawerHeadEl = document.querySelector(".drawer-head");
