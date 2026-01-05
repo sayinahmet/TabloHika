@@ -242,12 +242,13 @@
 
   .sidebar{
     position: fixed;
+    top: 0;
     left: 0;
-    top: 64px; /* ✅ drawer-head yüksekliği */
-    height: calc(100dvh - 64px);
-    height: calc(100vh - 64px); /* fallback */
-    width: min(92vw, 360px);
 
+    height: 100dvh; /* ✅ iOS/Android gerçek viewport */
+    height: 100vh;  /* fallback */
+
+    width: min(92vw, 360px);
     transform: translateX(-105%);
     transition: transform .22s ease;
     z-index: 70;
@@ -255,8 +256,11 @@
     border-right:1px solid var(--border);
     border-bottom:none;
 
-    padding-top: 8px;   /* artık 72px değil */
-    padding-bottom: 16px;
+    /* ✅ drawer-head için yer: eskisi gibi */
+    padding-top: 72px;
+
+    /* ✅ altta “son item yarım kalmasın” + safe area */
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
 
     background:#fafafa;
     touch-action: pan-y;
@@ -272,7 +276,7 @@
   body.drawer-dragging .sidebar{ transition: none !important; }
 }
 
-
+    
     .drawer-head{
       display:none;
       position: fixed;
