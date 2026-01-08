@@ -136,6 +136,96 @@
     }
     .group-title .subhint{ font-weight:700; color:#64748b; font-size:11px; }
 
+    /* Kategori dropdown stilleri */
+    .category{
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+    .category-header{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+      border-bottom: 1px solid transparent;
+      transition: background .15s ease, border-color .15s ease;
+      user-select: none;
+    }
+    .category-header:hover{
+      background: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 100%);
+    }
+    .category.open .category-header{
+      border-bottom-color: var(--border);
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+    }
+    .category-info{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .category-icon{
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .category-name{
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .category-count{
+      background: #f1f5f9;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .category-arrow{
+      color: var(--muted);
+      font-size: 12px;
+      transition: transform .2s ease;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    .category.open .category-arrow{
+      transform: rotate(180deg);
+    }
+    .category-items{
+      display: none;
+      padding: 8px;
+      background: #fafafa;
+    }
+    .category.open .category-items{
+      display: block;
+    }
+    .category-items .btn{
+      margin-bottom: 6px;
+      border-radius: 10px;
+    }
+    .category-items .btn:last-child{
+      margin-bottom: 0;
+    }
+
     .btn{
       width:100%;
       text-align:left;
@@ -608,23 +698,107 @@
         return;
       }
 
-      filtered.forEach((t, idx) => {
-        const btn = document.createElement("button");
-        btn.className = "btn";
-        btn.dataset.key = t.key;
-        btn.innerHTML = `
-          <div>
-            <div class="name">${(t.name || t.key)}</div>
-            <div class="meta">${t.sheet} • ${t.range}</div>
-          </div>
-          <div style="color:var(--primary); font-weight:900;">›</div>
-        `;
-        btn.onclick = () => select(t.key, { user:true });
-        listEl.appendChild(btn);
-
-        // eğer iframe boşsa, ilkini seç
-        if (idx === 0 && !frameEl.src) select(t.key, { user:false });
+      // Kategorilere göre grupla (sheet adına göre)
+      const categories = {};
+      filtered.forEach(t => {
+        const cat = t.sheet || "Diğer";
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(t);
       });
+
+      // Kategori sıralaması (alfabetik)
+      const catNames = Object.keys(categories).sort((a, b) => a.localeCompare(b, 'tr'));
+
+      // Eğer arama varsa veya tek kategori varsa, hepsini açık göster
+      const shouldExpandAll = f.length > 0 || catNames.length === 1;
+
+      catNames.forEach((catName, catIdx) => {
+        const items = categories[catName];
+        const catDiv = document.createElement("div");
+        catDiv.className = "category" + (shouldExpandAll ? " open" : "");
+        catDiv.dataset.category = catName;
+
+        // Kategori başlığı
+        const header = document.createElement("div");
+        header.className = "category-header";
+        
+        // Kategori ikonu (ilk harfler)
+        const initials = catName.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
+        
+        header.innerHTML = `
+          <div class="category-info">
+            <div class="category-icon">${initials}</div>
+            <div class="category-name" title="${catName}">${catName}</div>
+          </div>
+          <div class="category-count">${items.length}</div>
+          <div class="category-arrow">▼</div>
+        `;
+        
+        header.onclick = () => {
+          catDiv.classList.toggle("open");
+          // Açılan kategoriyi localStorage'a kaydet
+          saveCategoryState();
+        };
+
+        // Kategori içeriği
+        const itemsDiv = document.createElement("div");
+        itemsDiv.className = "category-items";
+
+        items.forEach((t, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.dataset.key = t.key;
+          btn.innerHTML = `
+            <div>
+              <div class="name">${(t.name || t.key)}</div>
+              <div class="meta">${t.range}</div>
+            </div>
+            <div style="color:var(--primary); font-weight:900;">›</div>
+          `;
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            select(t.key, { user:true });
+          };
+          itemsDiv.appendChild(btn);
+
+          // eğer iframe boşsa, ilkini seç
+          if (catIdx === 0 && idx === 0 && !frameEl.src) select(t.key, { user:false });
+        });
+
+        catDiv.appendChild(header);
+        catDiv.appendChild(itemsDiv);
+        listEl.appendChild(catDiv);
+      });
+
+      // Arama yoksa kaydedilmiş kategori durumlarını yükle
+      if (!f) loadCategoryState();
+    }
+
+    // Kategori açık/kapalı durumlarını kaydet
+    function saveCategoryState(){
+      try {
+        const openCats = [];
+        document.querySelectorAll(".category.open").forEach(cat => {
+          openCats.push(cat.dataset.category);
+        });
+        localStorage.setItem("category_state_" + SSID, JSON.stringify(openCats));
+      } catch {}
+    }
+
+    // Kategori durumlarını yükle
+    function loadCategoryState(){
+      try {
+        const saved = localStorage.getItem("category_state_" + SSID);
+        if (!saved) return;
+        const openCats = JSON.parse(saved);
+        document.querySelectorAll(".category").forEach(cat => {
+          if (openCats.includes(cat.dataset.category)) {
+            cat.classList.add("open");
+          } else {
+            cat.classList.remove("open");
+          }
+        });
+      } catch {}
     }
 
     function fitMobile(){
