@@ -138,82 +138,97 @@
 
     /* Kategori dropdown stilleri */
     .category{
-      margin-bottom: 8px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      margin-bottom: 10px;
+      border-radius: 14px;
       background: #fff;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+      box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      border: 1px solid rgba(0,0,0,.06);
+      transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .category:hover{
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+    .category.open{
+      border-color: rgba(0,176,232,.25);
+      box-shadow: 0 4px 20px rgba(0,176,232,.12);
     }
     .category-header{
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 14px;
+      padding: 14px 16px;
       cursor: pointer;
-      background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+      background: #fff;
       border-bottom: 1px solid transparent;
-      transition: background .15s ease, border-color .15s ease;
+      transition: background .15s ease;
       user-select: none;
+      gap: 12px;
     }
     .category-header:hover{
-      background: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 100%);
+      background: #f8fafc;
     }
     .category.open .category-header{
-      border-bottom-color: var(--border);
-      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+      border-bottom-color: rgba(0,0,0,.06);
+      background: linear-gradient(135deg, #f0f9ff 0%, #fff 100%);
     }
     .category-info{
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       min-width: 0;
       flex: 1;
     }
-    .category-icon{
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--primary);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 800;
-      flex-shrink: 0;
-    }
     .category-name{
-      font-weight: 800;
-      font-size: 13px;
+      font-weight: 700;
+      font-size: 14px;
       color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .category.open .category-name{
+      color: var(--primary);
+    }
+    .category-right{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
     .category-count{
       background: #f1f5f9;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 999px;
-      flex-shrink: 0;
+      min-width: 28px;
+      text-align: center;
+    }
+    .category.open .category-count{
+      background: rgba(0,176,232,.1);
+      color: var(--primary);
     }
     .category-arrow{
-      color: var(--muted);
-      font-size: 12px;
-      transition: transform .2s ease;
-      flex-shrink: 0;
-      margin-left: 8px;
+      color: #94a3b8;
+      font-size: 10px;
+      transition: transform .25s ease, color .15s ease;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
     }
     .category.open .category-arrow{
       transform: rotate(180deg);
+      color: var(--primary);
     }
     .category-items{
       display: none;
-      padding: 8px;
-      background: #fafafa;
+      padding: 8px 10px 10px;
+      background: #fafbfc;
     }
     .category.open .category-items{
       display: block;
@@ -221,9 +236,14 @@
     .category-items .btn{
       margin-bottom: 6px;
       border-radius: 10px;
+      background: #fff;
+      border-color: rgba(0,0,0,.06);
     }
     .category-items .btn:last-child{
       margin-bottom: 0;
+    }
+    .category-items .btn:hover{
+      border-color: rgba(0,176,232,.3);
     }
 
     .btn{
@@ -683,6 +703,45 @@
       activeTitleEl.textContent = t ? (t.name || t.key) : "Bir tablo seç";
     }
 
+    // Rapor adından kategori çıkar
+    function extractCategory(name, sheet) {
+      const n = (name || "").trim();
+      const s = (sheet || "").trim();
+      
+      // Önce bilinen kategori kalıplarını kontrol et
+      const patterns = [
+        { match: /binek\s*ara[cç]/i, cat: "Binek Araç Dağılımı" },
+        { match: /h[iı]z\s*(rapor|a[sş][iı]m)/i, cat: "Hız Raporu" },
+        { match: /[cç]al[iı][sş]ma\s*[oö]zet/i, cat: "Çalışma Özet Raporu" },
+        { match: /mesai\s*d[iı][sş][iı]/i, cat: "Mesai Dışı Raporu" },
+        { match: /[sş]ehir\s*de[gğ]i[sş]/i, cat: "Şehir Değişikliği" },
+        { match: /tamir/i, cat: "Tamir Raporu" },
+        { match: /yak[iı]t/i, cat: "Yakıt Raporu" },
+        { match: /km\s*rapor/i, cat: "KM Raporu" },
+        { match: /ara[cç]\s*takip/i, cat: "Araç Takip" },
+        { match: /[sş]antiye/i, cat: "Şantiye Raporları" },
+      ];
+      
+      // Önce name'de ara
+      for (const p of patterns) {
+        if (p.match.test(n)) return p.cat;
+      }
+      
+      // Sonra sheet'te ara
+      for (const p of patterns) {
+        if (p.match.test(s)) return p.cat;
+      }
+      
+      // Eşleşme yoksa sheet adını kullan (Sayfa1, Sayfa2 gibi generic isimleri "Diğer" yap)
+      if (/^sayfa\d+$/i.test(s)) {
+        // Sheet generic ise, name'in ilk 2-3 kelimesini kategori yap
+        const words = n.split(/\s+/).slice(0, 3).join(" ");
+        return words || "Diğer";
+      }
+      
+      return s || "Diğer";
+    }
+
     function render(filter=""){
       listEl.innerHTML = "";
       const f = filter.trim().toLowerCase();
@@ -698,10 +757,10 @@
         return;
       }
 
-      // Kategorilere göre grupla (sheet adına göre)
+      // Kategorilere göre grupla (akıllı kategori çıkarımı)
       const categories = {};
       filtered.forEach(t => {
-        const cat = t.sheet || "Diğer";
+        const cat = extractCategory(t.name, t.sheet);
         if (!categories[cat]) categories[cat] = [];
         categories[cat].push(t);
       });
@@ -722,16 +781,14 @@
         const header = document.createElement("div");
         header.className = "category-header";
         
-        // Kategori ikonu (ilk harfler)
-        const initials = catName.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
-        
         header.innerHTML = `
           <div class="category-info">
-            <div class="category-icon">${initials}</div>
             <div class="category-name" title="${catName}">${catName}</div>
           </div>
-          <div class="category-count">${items.length}</div>
-          <div class="category-arrow">▼</div>
+          <div class="category-right">
+            <div class="category-count">${items.length}</div>
+            <div class="category-arrow">▼</div>
+          </div>
         `;
         
         header.onclick = () => {
@@ -751,7 +808,7 @@
           btn.innerHTML = `
             <div>
               <div class="name">${(t.name || t.key)}</div>
-              <div class="meta">${t.range}</div>
+              <div class="meta">${t.sheet} • ${t.range}</div>
             </div>
             <div style="color:var(--primary); font-weight:900;">›</div>
           `;
