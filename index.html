@@ -563,7 +563,7 @@
 
   <script>
     const WEBAPP = "https://script.google.com/macros/s/AKfycbyA8NpgRWFjlZV47sEu7KGvL_zOVpeJpk8UaH6K5ZFkbvTwPaS76Tj1vtOhuK9LnFMQHg/exec";
-    const SSID   = "15NX2Fxi9ifIBbjtToNtFvrYksLRTF7G3qdJw1AJMk0I";
+    const SSID   = "1cgCpXjorg5KnSrx2uFja6GC67S4H7LEaxG1mWxkkP4g";
 
     // ✅ Client cache keys
     const LS_LIST_KEY = "tables_cache_v1_" + SSID;
@@ -710,15 +710,17 @@
       
       // Önce bilinen kategori kalıplarını kontrol et
       const patterns = [
-        { match: /binek\s*ara[cç]/i, cat: "Binek Araç Dağılımı" },
-        { match: /h[iı]z\s*(rapor|a[sş][iı]m)/i, cat: "Hız Raporu" },
-        { match: /[cç]al[iı][sş]ma\s*[oö]zet/i, cat: "Çalışma Özet Raporu" },
-        { match: /mesai\s*d[iı][sş][iı]/i, cat: "Mesai Dışı Raporu" },
-        { match: /[sş]ehir\s*de[gğ]i[sş]/i, cat: "Şehir Değişikliği" },
-        { match: /tamir/i, cat: "Tamir Raporu" },
-        { match: /yak[iı]t/i, cat: "Yakıt Raporu" },
-        { match: /km\s*rapor/i, cat: "KM Raporu" },
-        { match: /ara[cç]\s*takip/i, cat: "Araç Takip" },
+        { match: /binek\s*ara[cç]/i, cat: "Binek Araç" },
+        { match: /kamyon/i, cat: "Kamyon" },
+        { match: /pikap/i, cat: "Pikap" },
+        { match: /minib[uü]s/i, cat: "Minibüs" },
+        { match: /otob[uü]s/i, cat: "Otobüs" },
+        { match: /kepçe/i, cat: "Kepçe" },
+        { match: /forklift/i, cat: "Forklift" },
+        { match: /vinç/i, cat: "Vinç" },
+        { match: /tır/i, cat: "Tır" },
+        { match: /trailer/i, cat: "Trailer" },
+        { match: /makine/i, cat: "İş Makineleri" },
         { match: /[sş]antiye/i, cat: "Şantiye Raporları" },
       ];
       
@@ -732,13 +734,7 @@
         if (p.match.test(s)) return p.cat;
       }
       
-      // Eşleşme yoksa sheet adını kullan (Sayfa1, Sayfa2 gibi generic isimleri "Diğer" yap)
-      if (/^sayfa\d+$/i.test(s)) {
-        // Sheet generic ise, name'in ilk 2-3 kelimesini kategori yap
-        const words = n.split(/\s+/).slice(0, 3).join(" ");
-        return words || "Diğer";
-      }
-      
+      // Eşleşme yoksa sheet adını kullan
       return s || "Diğer";
     }
 
