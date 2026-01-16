@@ -574,13 +574,16 @@
     let prog = 0;
 
     function buildUrl(t){
-      // ✅ v paramını kaldırdık: server tarafı lastUpdated ile güncellik garantili
       const params = new URLSearchParams({
         ss: SSID,
         sheet: t.sheet,
         range: t.range,
-        skip: String(t.skip ?? 1)
+        skip: String(t.skip ?? 0)
       });
+      // Header'ı ayrıca eklemesi gereken tablolar için headerRange parametresi
+      if (t.headerRange) {
+        params.set("headerRange", t.headerRange);
+      }
       return `${WEBAPP}?${params.toString()}`;
     }
 
