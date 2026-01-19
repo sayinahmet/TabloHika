@@ -756,75 +756,62 @@
         return;
       }
 
-      // Kategorilere göre grupla (akıllı kategori çıkarımı)
-      const categories = {};
-      filtered.forEach(t => {
-        const cat = extractCategory(t.name, t.sheet);
-        if (!categories[cat]) categories[cat] = [];
-        categories[cat].push(t);
-      });
+      // Tüm raporları "Puantaj" kategorisi altında göster
+      const catName = "Puantaj";
+      const items = filtered;
+      
+      const catDiv = document.createElement("div");
+      catDiv.className = "category" + (f.length > 0 ? " open" : "");
+      catDiv.dataset.category = catName;
 
-      // Kategori sıralaması (alfabetik)
-      const catNames = Object.keys(categories).sort((a, b) => a.localeCompare(b, 'tr'));
+      // Kategori başlığı
+      const header = document.createElement("div");
+      header.className = "category-header";
+      
+      header.innerHTML = `
+        <div class="category-info">
+          <div class="category-name" title="${catName}">${catName}</div>
+        </div>
+        <div class="category-right">
+          <div class="category-count">${items.length}</div>
+          <div class="category-arrow">▼</div>
+        </div>
+      `;
+      
+      header.onclick = () => {
+        catDiv.classList.toggle("open");
+        // Açılan kategoriyi localStorage'a kaydet
+        saveCategoryState();
+      };
 
-      // Eğer arama varsa veya tek kategori varsa, hepsini açık göster
-      const shouldExpandAll = f.length > 0 || catNames.length === 1;
+      // Kategori içeriği
+      const itemsDiv = document.createElement("div");
+      itemsDiv.className = "category-items";
 
-      catNames.forEach((catName, catIdx) => {
-        const items = categories[catName];
-        const catDiv = document.createElement("div");
-        catDiv.className = "category" + (shouldExpandAll ? " open" : "");
-        catDiv.dataset.category = catName;
-
-        // Kategori başlığı
-        const header = document.createElement("div");
-        header.className = "category-header";
-        
-        header.innerHTML = `
-          <div class="category-info">
-            <div class="category-name" title="${catName}">${catName}</div>
+      items.forEach((t, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.dataset.key = t.key;
+        btn.innerHTML = `
+          <div>
+            <div class="name">${(t.name || t.key)}</div>
+            <div class="meta">${t.sheet} • ${t.range}</div>
           </div>
-          <div class="category-right">
-            <div class="category-count">${items.length}</div>
-            <div class="category-arrow">▼</div>
-          </div>
+          <div style="color:var(--primary); font-weight:900;">›</div>
         `;
-        
-        header.onclick = () => {
-          catDiv.classList.toggle("open");
-          // Açılan kategoriyi localStorage'a kaydet
-          saveCategoryState();
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          select(t.key, { user:true });
         };
+        itemsDiv.appendChild(btn);
 
-        // Kategori içeriği
-        const itemsDiv = document.createElement("div");
-        itemsDiv.className = "category-items";
-
-        items.forEach((t, idx) => {
-          const btn = document.createElement("button");
-          btn.className = "btn";
-          btn.dataset.key = t.key;
-          btn.innerHTML = `
-            <div>
-              <div class="name">${(t.name || t.key)}</div>
-              <div class="meta">${t.sheet} • ${t.range}</div>
-            </div>
-            <div style="color:var(--primary); font-weight:900;">›</div>
-          `;
-          btn.onclick = (e) => {
-            e.stopPropagation();
-            select(t.key, { user:true });
-          };
-          itemsDiv.appendChild(btn);
-
-          // eğer iframe boşsa, ilkini seç
-          if (catIdx === 0 && idx === 0 && !frameEl.src) select(t.key, { user:false });
-        });
-
-        catDiv.appendChild(header);
-        catDiv.appendChild(itemsDiv);
-        listEl.appendChild(catDiv);
+        // eğer iframe boşsa, ilkini seç
+        if (idx === 0 && !frameEl.src) select(t.key, { user:false });
       });
+
+      catDiv.appendChild(header);
+      catDiv.appendChild(itemsDiv);
+      listEl.appendChild(catDiv);
 
       // Arama yoksa kaydedilmiş kategori durumlarını yükle
       if (!f) loadCategoryState();
