@@ -566,7 +566,7 @@
     // 🔥 CACHE TEMİZLE - Sayfa yüklendiğinde tüm cache'i temizle
     try {
       localStorage.clear();
-      console.log("Cache temizlendi!");
+      console.log("Cache temizlendi! v2");
     } catch {}
 
     // ✅ Client cache keys
@@ -587,6 +587,10 @@
       // Header'ı ayrıca eklemesi gereken tablolar için headerRange parametresi
       if (t.headerRange) {
         params.set("headerRange", t.headerRange);
+      }
+      // FullView modu için parametre ekle
+      if (t.fullView) {
+        params.set("fullView", "true");
       }
       return `${WEBAPP}?${params.toString()}`;
     }
