@@ -563,7 +563,12 @@
     const WEBAPP = "https://script.google.com/macros/s/AKfycby9ggI24_mnVHEYgmq82HH0qiRTE770QA7T9u0VTSZ8xp4ArN8rWXyW3lUgbS68tvRpyA/exec";
     const SSID   = "1TnIO2pggeaQhuSfuOTjYe-sVN0o3Dlf-f9is1XxGFDk";
 
-
+    // 🔥 CACHE TEMİZLE - Sayfa yüklendiğinde tüm cache'i temizle
+    try {
+      localStorage.clear();
+      console.log("Cache temizlendi!");
+    } catch {}
++
     // ✅ Client cache keys
     const LS_LIST_KEY = "tables_cache_v1_" + SSID;
     const LS_LAST_KEY = "tables_last_selected_v1_" + SSID;
@@ -755,9 +760,17 @@
         return;
       }
 
-      // Tüm raporları "Güncel Puantaj" kategorisi altında göster
-      const catName = "Güncel Puantaj";
-      const items = filtered;
+      // Kategorileri grupla
+      const categories = {};
+      filtered.forEach(t => {
+        const cat = t.category || "Diğer";
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(t);
+      });
+
+      // Her kategori için dropdown oluştur
+      Object.keys(categories).sort((a, b) => a.localeCompare(b, 'tr')).forEach(catName => {
+        const items = categories[catName];
       
       const catDiv = document.createElement("div");
       catDiv.className = "category" + (f.length > 0 ? " open" : "");
@@ -813,6 +826,7 @@
 
       // Arama yoksa kaydedilmiş kategori durumlarını yükle
       if (!f) loadCategoryState();
+      }); // forEach kapanışı
     }
 
     // Kategori açık/kapalı durumlarını kaydet
