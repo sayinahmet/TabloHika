@@ -568,7 +568,7 @@
       localStorage.clear();
       console.log("Cache temizlendi!");
     } catch {}
-+
+
     // ✅ Client cache keys
     const LS_LIST_KEY = "tables_cache_v1_" + SSID;
     const LS_LAST_KEY = "tables_last_selected_v1_" + SSID;
@@ -815,18 +815,15 @@
           select(t.key, { user:true });
         };
         itemsDiv.appendChild(btn);
-
-        // eğer iframe boşsa, ilkini seç
-        if (idx === 0 && !frameEl.src) select(t.key, { user:false });
       });
 
       catDiv.appendChild(header);
       catDiv.appendChild(itemsDiv);
       listEl.appendChild(catDiv);
+      }); // forEach kapanışı
 
       // Arama yoksa kaydedilmiş kategori durumlarını yükle
       if (!f) loadCategoryState();
-      }); // forEach kapanışı
     }
 
     // Kategori açık/kapalı durumlarını kaydet
