@@ -306,8 +306,6 @@
       border:0;
       display:block;
       background:#fff;
-      transform: none !important;
-      transform-origin: top left;
     }
 
     .menu-btn{
@@ -562,8 +560,9 @@
   </div>
 
   <script>
-    const WEBAPP = "https://script.google.com/macros/s/AKfycbyA8NpgRWFjlZV47sEu7KGvL_zOVpeJpk8UaH6K5ZFkbvTwPaS76Tj1vtOhuK9LnFMQHg/exec";
-    const SSID   = "1cgCpXjorg5KnSrx2uFja6GC67S4H7LEaxG1mWxkkP4g";
+    const WEBAPP = "https://script.google.com/macros/s/AKfycby9ggI24_mnVHEYgmq82HH0qiRTE770QA7T9u0VTSZ8xp4ArN8rWXyW3lUgbS68tvRpyA/exec";
+    const SSID   = "1TnIO2pggeaQhuSfuOTjYe-sVN0o3Dlf-f9is1XxGFDk";
+
 
     // ✅ Client cache keys
     const LS_LIST_KEY = "tables_cache_v1_" + SSID;
@@ -756,8 +755,8 @@
         return;
       }
 
-      // Tüm raporları "Puantaj" kategorisi altında göster
-      const catName = "Puantaj";
+      // Tüm raporları "Güncel Puantaj" kategorisi altında göster
+      const catName = "Güncel Puantaj";
       const items = filtered;
       
       const catDiv = document.createElement("div");
